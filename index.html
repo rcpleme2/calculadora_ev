@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora EV vs Combustão</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2ecc71">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Calc EV">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f6fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 440px;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 22px;
+        }
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 16px;
+            background-color: #fcfcfd;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 14px;
+            color: #2c3e50;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-group {
+            margin-bottom: 12px;
+        }
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #5f6c7d;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            border-color: #2ecc71;
+        }
+        .result-box {
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            background-color: #eef2f5;
+            text-align: center;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .highlight-ev { color: #27ae60; }
+        .highlight-fossil { color: #c0392b; }
+        .details {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>EV vs Combustão</h2>
+    
+    <!-- Veículo Elétrico -->
+    <div class="section">
+        <div class="section-title">⚡ Carro Elétrico (EV)</div>
+        <div class="input-group">
+            <label for="precoEnergia">Preço da Energia (R$/kWh):</label>
+            <input type="number" id="precoEnergia" step="0.01" inputmode="decimal" placeholder="Ex: 0.85">
+        </div>
+        <div class="input-group">
+            <label for="consumoEV">Consumo Médio (km/kWh):</label>
+            <input type="number" id="consumoEV" step="0.1" inputmode="decimal" placeholder="Ex: 6.0">
+        </div>
+    </div>
+
+    <!-- Veículo a Combustão -->
+    <div class="section">
+        <div class="section-title">⛽ Carro a Combustão</div>
+        <div class="input-group">
+            <label for="precoCombustivel">Preço do Combustível (R$/Litro):</label>
+            <input type="number" id="precoCombustivel" step="0.01" inputmode="decimal" placeholder="Ex: 5.80">
+        </div>
+        <div class="input-group">
+            <label for="consumoFossil">Consumo Médio (km/Litro):</label>
+            <input type="number" id="consumoFossil" step="0.1" inputmode="decimal" placeholder="Ex: 10.5">
+        </div>
+    </div>
+
+    <!-- Resultado -->
+    <div id="resultado" class="result-box">
+        Preencha os dados para calcular a vantajosidade.
+    </div>
+</div>
+
+<script>
+    const inputs = ['precoEnergia', 'consumoEV', 'precoCombustivel', 'consumoFossil'];
+    const DOMelements = {};
+    inputs.forEach(id => DOMelements[id] = document.getElementById(id));
+    const resultadoDiv = document.getElementById('resultado');
+
+    function carregarValoresSalvos() {
+        inputs.forEach(id => {
+            const valorSalvo = localStorage.getItem(id);
+            if (valorSalvo) {
+                DOMelements[id].value = valorSalvo;
+            }
+        });
+        calcularVantajosidade();
+    }
+
+    function salvarValores() {
+        inputs.forEach(id => {
+            localStorage.setItem(id, DOMelements[id].value);
+        });
+    }
+
+    function calcularVantajosidade() {
+        const precoEnergia = parseFloat(DOMelements['precoEnergia'].value);
+        const consumoEV = parseFloat(DOMelements['consumoEV'].value);
+        const precoCombustivel = parseFloat(DOMelements['precoCombustivel'].value);
+        const consumoFossil = parseFloat(DOMelements['consumoFossil'].value);
+
+        if (!precoEnergia || !consumoEV || !precoCombustivel || !consumoFossil) {
+            resultadoDiv.innerHTML = "Insira todos os dados para calcular";
+            return;
+        }
+
+        const custoPorKmEV = precoEnergia / consumoEV;
+        const custoPorKmFossil = precoCombustivel / consumoFossil;
+
+        if (custoPorKmEV < custoPorKmFossil) {
+            const economia = ((1 - (custoPorKmEV / custoPorKmFossil)) * 100).toFixed(1);
+            resultadoDiv.innerHTML = `
+                <div class="result-title">Vantagem: <span class="highlight-ev">Carro Elétrico</span></div>
+                <div class="details">EV: R$ ${custoPorKmEV.toFixed(2)}/km | Fóssil: R$ ${custoPorKmFossil.toFixed(2)}/km</div>
+                <div class="details" style="color: #27ae60; font-weight: bold;">Economia de ${economia}% por quilômetro rodado</div>
+            `;
+        } else if (custoPorKmFossil < custoPorKmEV) {
+            const economy = ((1 - (custoPorKmFossil / custoPorKmEV)) * 100).toFixed(1);
+            resultadoDiv.innerHTML = `
+                <div class="result-title">Vantagem: <span class="highlight-fossil">Carro a Combustão</span></div>
+                <div class="details">Fóssil: R$ ${custoPorKmFossil.toFixed(2)}/km | EV: R$ ${custoPorKmEV.toFixed(2)}/km</div>
+                <div class="details" style="color: #c0392b; font-weight: bold;">Economia de ${economy}% por quilômetro rodado</div>
+            `;
+        } else {
+            resultadoDiv.innerHTML = `<div class="result-title">Custos Equivalentes!</div><div class="details">Ambos custam R$ ${custoPorKmEV.toFixed(2)}/km</div>`;
+        }
+    }
+
+    inputs.forEach(id => {
+        DOMelements[id].addEventListener('input', () => {
+            salvarValores();
+            calcularVantajosidade();
+        });
+    });
+
+    window.addEventListener('DOMContentLoaded', carregarValoresSalvos);
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Service Worker registrado.'))
+                .catch(err => console.log('Erro no Service Worker:', err));
+        });
+    }
+</script>
+
+</body>
+</html>
