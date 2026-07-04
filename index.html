@@ -53,11 +53,11 @@
         <div class="section-title">⚡ Carro Elétrico (EV)</div>
         <div class="input-group">
             <label for="precoEnergia">Preço da Energia (R$/kWh):</label>
-            <input type="number" id="precoEnergia" step="0.01" inputmode="decimal" placeholder="Ex: 0.85">
+            <input type="text" id="precoEnergia" inputmode="decimal" placeholder="Ex: 0,85">
         </div>
         <div class="input-group">
             <label for="consumoEV">Consumo Médio (kWh/100km):</label>
-            <input type="number" id="consumoEV" step="0.1" inputmode="decimal" placeholder="Ex: 15.5">
+            <input type="text" id="consumoEV" inputmode="decimal" placeholder="Ex: 15,5">
         </div>
     </div>
 
@@ -65,11 +65,11 @@
         <div class="section-title">⛽ Carro a Combustão</div>
         <div class="input-group">
             <label for="precoCombustivel">Preço do Combustível (R$/Litro):</label>
-            <input type="number" id="precoCombustivel" step="0.01" inputmode="decimal" placeholder="Ex: 5.80">
+            <input type="text" id="precoCombustivel" inputmode="decimal" placeholder="Ex: 5,80">
         </div>
         <div class="input-group">
             <label for="consumoFossil">Consumo Médio (km/Litro):</label>
-            <input type="number" id="consumoFossil" step="0.1" inputmode="decimal" placeholder="Ex: 10.5">
+            <input type="text" id="consumoFossil" inputmode="decimal" placeholder="Ex: 10,5">
         </div>
     </div>
 
@@ -100,45 +100,66 @@
         });
     }
 
-    function calcularVantajosidade() {
-        const precoEnergia = parseFloat(DOMelements['precoEnergia'].value);
-        const consumoEV = parseFloat(DOMelements['consumoEV'].value);
-        const precoCombustivel = parseFloat(DOMelements['precoCombustivel'].value);
-        const consumoFossil = parseFloat(DOMelements['consumoFossil'].value);
+    // Função auxiliar para converter o texto digitado (com vírgula) em número flutuante válido
+    function lerValorNumerico(id) {
+        const texto = DOMelements[id].value.trim();
+        // Substitui a vírgula por ponto para o JavaScript conseguir calcular
+        const textoFormatado = texto.replace(',', '.');
+        return parseFloat(textoFormatado);
+    }
 
-        if (!precoEnergia || !consumoEV || !precoCombustivel || !consumoFossil) {
+    // Função auxiliar para formatar a saída de volta para o padrão com vírgula
+    function formatarParaVirgula(numero) {
+        return numero.toFixed(2).replace('.', ',');
+    }
+
+    function formatarPercentual(numero) {
+        return numero.toFixed(1).replace('.', ',');
+    }
+
+    function calcularVantajosidade() {
+        const precoEnergia = lerValorNumerico('precoEnergia');
+        const consumoEV = lerValorNumerico('consumoEV');
+        const precoCombustivel = lerValorNumerico('precoCombustivel');
+        const consumoFossil = lerValorNumerico('consumoFossil');
+
+        if (isNaN(precoEnergia) || isNaN(consumoEV) || isNaN(precoCombustivel) || isNaN(consumoFossil) || consumoEV === 0 || consumoFossil === 0) {
             resultadoDiv.innerHTML = "Insira todos os dados para calcular";
             return;
         }
 
-        // LÓGICA ATUALIZADA:
-        // Custo EV = (Preço kWh * Consumo a cada 100km) / 100
         const custoPorKmEV = (precoEnergia * consumoEV) / 100;
-        
-        // Custo Combustão = Preço do Litro / km por litro
         const custoPorKmFossil = precoCombustivel / consumoFossil;
 
+        const kmEVFormatado = formatarParaVirgula(custoPorKmEV);
+        const kmFossilFormatado = formatarParaVirgula(custoPorKmFossil);
+
         if (custoPorKmEV < custoPorKmFossil) {
-            const economia = ((1 - (custoPorKmEV / custoPorKmFossil)) * 100).toFixed(1);
+            const economia = ((1 - (custoPorKmEV / custoPorKmFossil)) * 100);
             resultadoDiv.innerHTML = `
                 <div class="result-title">Vantagem: <span class="highlight-ev">Carro Elétrico</span></div>
-                <div class="details">EV: R$ ${custoPorKmEV.toFixed(2)}/km | Fóssil: R$ ${custoPorKmFossil.toFixed(2)}/km</div>
-                <div class="details" style="color: #27ae60; font-weight: bold;">Economia de ${economia}% por quilômetro rodado</div>
+                <div class="details">EV: R$ ${kmEVFormatado}/km | Fóssil: R$ ${kmFossilFormatado}/km</div>
+                <div class="details" style="color: #27ae60; font-weight: bold;">Economia de ${formatarPercentual(economia)}% por quilômetro rodado</div>
             `;
         } else if (custoPorKmFossil < custoPorKmEV) {
-            const economy = ((1 - (custoPorKmFossil / custoPorKmEV)) * 100).toFixed(1);
+            const economia = ((1 - (custoPorKmFossil / custoPorKmEV)) * 100);
             resultadoDiv.innerHTML = `
                 <div class="result-title">Vantagem: <span class="highlight-fossil">Carro a Combustão</span></div>
-                <div class="details">Fóssil: R$ ${custoPorKmFossil.toFixed(2)}/km | EV: R$ ${custoPorKmEV.toFixed(2)}/km</div>
-                <div class="details" style="color: #c0392b; font-weight: bold;">Economia de ${economy}% por quilômetro rodado</div>
+                <div class="details">Fóssil: R$ ${kmFossilFormatado}/km | EV: R$ ${kmEVFormatado}/km</div>
+                <div class="details" style="color: #c0392b; font-weight: bold;">Economia de ${formatarPercentual(economia)}% por quilômetro rodado</div>
             `;
         } else {
-            resultadoDiv.innerHTML = `<div class="result-title">Custos Equivalentes!</div><div class="details">Ambos custam R$ ${custoPorKmEV.toFixed(2)}/km</div>`;
+            resultadoDiv.innerHTML = `<div class="result-title">Custos Equivalentes!</div><div class="details">Ambos custam R$ ${kmEVFormatado}/km</div>`;
         }
     }
 
     inputs.forEach(id => {
         DOMelements[id].addEventListener('input', () => {
+            // Substitui pontos por vírgulas em tempo real caso o usuário digite ponto por hábito
+            let valor = DOMelements[id].value;
+            if (valor.includes('.')) {
+                DOMelements[id].value = valor.replace('.', ',');
+            }
             salvarValores();
             calcularVantajosidade();
         });
