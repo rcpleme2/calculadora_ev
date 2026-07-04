@@ -84,10 +84,6 @@
     inputs.forEach(id => DOMelements[id] = document.getElementById(id));
     const resultadoDiv = document.getElementById('resultado');
 
-    // Formatador nativo para o padrão Brasileiro (Moeda/Decimais)
-    const formatadorBR = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const formatadorPercentual = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
     function carregarValoresSalvos() {
         inputs.forEach(id => {
             const valorSalvo = localStorage.getItem(id);
@@ -100,18 +96,25 @@
 
     function salvarValores() {
         inputs.forEach(id => {
-            // Salva exatamente o que o usuário digitou (com vírgula)
             localStorage.setItem(id, DOMelements[id].value);
         });
     }
 
-    // Função que extrai o valor do campo e converte para número legível pelo JavaScript
     function extrairNumero(id) {
         let valorTexto = DOMelements[id].value.trim();
         if (!valorTexto) return NaN;
-        // O motor matemático do JS exige ponto. Essa linha faz a tradução interna.
+        // O cálculo exige ponto, então traduzimos internamente na hora da conta
         let valorParaCalculo = valorTexto.replace(',', '.');
         return parseFloat(valorParaCalculo);
+    }
+
+    // Funções de formatação blindadas contra bugs de regionalização do Safari
+    function formatarDinheiro(valor) {
+        return valor.toFixed(2).replace('.', ',');
+    }
+
+    function formatarPorcentagem(valor) {
+        return valor.toFixed(1).replace('.', ',');
     }
 
     function calcularVantajosidade() {
@@ -120,33 +123,31 @@
         const precoCombustivel = extrairNumero('precoCombustivel');
         const consumoFossil = extrairNumero('consumoFossil');
 
-        // Verifica se algum dado não é um número válido ou se os divisores são zero
         if (isNaN(precoEnergia) || isNaN(consumoEV) || isNaN(precoCombustivel) || isNaN(consumoFossil) || consumoEV === 0 || consumoFossil === 0) {
             resultadoDiv.innerHTML = "Insira todos os dados para calcular";
             return;
         }
 
-        // Cálculos matemáticos
         const custoPorKmEV = (precoEnergia * consumoEV) / 100;
         const custoPorKmFossil = precoCombustivel / consumoFossil;
 
-        // Formatação dos resultados para exibição em pt-BR (com vírgulas)
-        const kmEVFormatado = formatadorBR.format(custoPorKmEV);
-        const kmFossilFormatado = formatadorBR.format(custoPorKmFossil);
+        // Exibição garantida com vírgula
+        const kmEVFormatado = formatarDinheiro(custoPorKmEV);
+        const kmFossilFormatado = formatarDinheiro(custoPorKmFossil);
 
         if (custoPorKmEV < custoPorKmFossil) {
             const economia = ((1 - (custoPorKmEV / custoPorKmFossil)) * 100);
             resultadoDiv.innerHTML = `
                 <div class="result-title">Vantagem: <span class="highlight-ev">Carro Elétrico</span></div>
                 <div class="details">EV: R$ ${kmEVFormatado}/km | Fóssil: R$ ${kmFossilFormatado}/km</div>
-                <div class="details" style="color: #27ae60; font-weight: bold;">Economia de ${formatadorPercentual.format(economia)}% por quilômetro rodado</div>
+                <div class="details" style="color: #27ae60; font-weight: bold;">Economia de ${formatarPorcentagem(economia)}% por quilômetro rodado</div>
             `;
         } else if (custoPorKmFossil < custoPorKmEV) {
             const economia = ((1 - (custoPorKmFossil / custoPorKmEV)) * 100);
             resultadoDiv.innerHTML = `
                 <div class="result-title">Vantagem: <span class="highlight-fossil">Carro a Combustão</span></div>
                 <div class="details">Fóssil: R$ ${kmFossilFormatado}/km | EV: R$ ${kmEVFormatado}/km</div>
-                <div class="details" style="color: #c0392b; font-weight: bold;">Economia de ${formatadorPercentual.format(economia)}% por quilômetro rodado</div>
+                <div class="details" style="color: #c0392b; font-weight: bold;">Economia de ${formatarPorcentagem(economia)}% por quilômetro rodado</div>
             `;
         } else {
             resultadoDiv.innerHTML = `<div class="result-title">Custos Equivalentes!</div><div class="details">Ambos custam R$ ${kmEVFormatado}/km</div>`;
@@ -155,19 +156,20 @@
 
     inputs.forEach(id => {
         DOMelements[id].addEventListener('input', function(e) {
-            // Força a substituição imediata se o usuário tentar digitar um ponto
-            if (this.value.includes('.')) {
-                this.value = this.value.replace('.', ',');
+            // Pega o valor atual e força a conversão global de ponto para vírgula
+            let val = this.value.replace(/\./g, ',');
+            
+            // Remove qualquer caractere que não seja número ou vírgula
+            val = val.replace(/[^0-9,]/g, '');
+            
+            // Impede que o usuário consiga colocar duas vírgulas (ex: 15,,5)
+            const partes = val.split(',');
+            if (partes.length > 2) {
+                val = partes[0] + ',' + partes.slice(1).join('');
             }
             
-            // Impede a digitação de mais de uma vírgula no mesmo campo
-            const partes = this.value.split(',');
-            if (partes.length > 2) {
-                this.value = partes[0] + ',' + partes.slice(1).join('').replace(/,/g, '');
-            }
-
-            // Remove caracteres que não sejam números ou vírgula
-            this.value = this.value.replace(/[^0-9,]/g, '');
+            // Atualiza o campo instantaneamente no iPhone
+            this.value = val;
 
             salvarValores();
             calcularVantajosidade();
